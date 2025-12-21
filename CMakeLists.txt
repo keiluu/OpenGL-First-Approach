@@ -4,15 +4,54 @@ project(geom_visualizer LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# ---------- Common include path ----------
+set(PROJECT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+# ---------- Put shared code into a library ----------
+add_library(geom_core STATIC
+        src/geom.cpp
+)
+
+target_include_directories(geom_core PUBLIC
+        ${PROJECT_INCLUDE_DIR}
+)
+
+# ---------- App ----------
 add_executable(geom_visualizer
         src/main.cpp
         src/glad.c
-        src/main.cpp
 )
 
 target_include_directories(geom_visualizer PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${PROJECT_INCLUDE_DIR}
 )
 
 find_package(glfw3 REQUIRED)
-target_link_libraries(geom_visualizer PRIVATE glfw dl GL)
+target_link_libraries(geom_visualizer PRIVATE
+        geom_core
+        glfw
+        dl
+        GL
+)
+
+# ---------- Tests ----------
+enable_testing()
+
+add_executable(geom_test
+        test/geom_tests.cpp
+)
+
+target_link_libraries(geom_test PRIVATE
+        geom_core
+)
+
+# Ubuntu libgtest-dev: this *often* works
+find_package(GTest REQUIRED)
+
+target_link_libraries(geom_test PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+)
+
+include(GoogleTest)
+gtest_discover_tests(geom_test)
