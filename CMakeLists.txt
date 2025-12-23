@@ -14,6 +14,7 @@ add_library(geom_core STATIC
 
 target_include_directories(geom_core PUBLIC
         ${PROJECT_INCLUDE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/external/mdspan/include
 )
 
 # ---------- App ----------
