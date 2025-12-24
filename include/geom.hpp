@@ -43,6 +43,30 @@ namespace  geom {
             return array[i];
         }
 
+        Mat3x3 operator+ (const Mat3x3& other) const {
+            Mat3x3 result;
+            for (std::size_t i = 0; i < 9; i++) {result[i] = array[i] + other[i];}
+            return result;
+        }
+
+        Mat3x3 operator- (const Mat3x3& other) const {
+            Mat3x3 result;
+            for (std::size_t i = 0; i < 9; i++) {result[i] = array[i] - other[i];}
+            return result;
+        }
+
+        Mat3x3 operator* (const T scalar) const {
+            Mat3x3 result;
+            for (std::size_t i = 0; i < 9; i++) {result[i] = array[i] * scalar;}
+            return result;
+        }
+
+        Mat3x3 operator/ (const T scalar) const {
+            Mat3x3 result;
+            for (std::size_t i = 0; i < 9; i++) {result[i] = array[i] / scalar;}
+            return result;
+        }
+
     };
 
 
@@ -64,11 +88,11 @@ namespace  geom {
             return Vec3(x - other.x, y - other.y, z - other.z);
         }
 
-        constexpr Vec3 operator* (T scalar) const {
+        constexpr Vec3 operator* (const T scalar) const {
             return Vec3(x * scalar, y * scalar, z * scalar);
         }
 
-        constexpr Vec3 operator/ (T scalar) const {
+        constexpr Vec3 operator/ (const T scalar) const {
             return Vec3(x / scalar, y / scalar, z / scalar);
         }
 
@@ -86,19 +110,21 @@ namespace  geom {
             return *this;
         }
 
-        constexpr Vec3& operator*= (T scalar) {
+        constexpr Vec3& operator*= (const T scalar) {
             x *= scalar;
             y *= scalar;
             z *= scalar;
             return *this;
         }
 
-        constexpr Vec3& operator/= (T scalar) {
+        constexpr Vec3& operator/= (const T scalar) {
             x /= scalar;
             y /= scalar;
             z /= scalar;
             return *this;
         }
+
+        constexpr Vec3& operator= (const Vec3& other) = default;
     };
 }; // namespace
 
