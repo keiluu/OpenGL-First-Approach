@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <stdexcept>
 #include <type_traits>
+#include <utility>
 
 TEST(Geometry_Class, Vec3_Constructor) {
     try {
@@ -439,11 +440,308 @@ TEST(Mat3x3, ScalarDivideIsElementWiseAndNonMutating) {
     }
 }
 
-TEST(Mat3x3, DivisionByZeroBehavior_IsNotTested) {
-    // NOTE:
-    // Your operator/(scalar) does not guard against scalar==0.
-    // For integral T, dividing by 0 is UB.
-    // For floating T, it yields inf/nan depending on IEEE behavior.
-    // So we do NOT test division-by-zero here.
-    SUCCEED();
+// ---------------------------------------
+// Helpers: const-correctness checks
+// ---------------------------------------
+namespace test_detail {
+
+template <class M>
+concept has_2d_mutable_index = requires(M m) {
+    { m[0, 0] } -> std::same_as<typename std::remove_reference_t<M>::value_type&>; // only works if you have value_type
+};
+
+// Your Mat3x3 doesn't have value_type, so we'll test via decltype directly below.
+
+template <typename T>
+concept can_call_plus_on_const_vec3 =
+    requires(const geom::Vec3<T> a, const geom::Vec3<T> b) { a + b; };
+
+template <typename T>
+concept cannot_call_pluseq_on_const_vec3 =
+    !requires(const geom::Vec3<T> a, const geom::Vec3<T> b) { a += b; };
+
+template <typename T>
+concept can_call_plus_on_const_mat =
+    requires(const geom::Mat3x3<T> a, const geom::Mat3x3<T> b) { a + b; };
+
+template <typename T>
+concept cannot_call_pluseq_on_const_mat =
+    !requires(const geom::Mat3x3<T> a, const geom::Mat3x3<T> b) { a += b; };
+
+} // namespace test_detail
+
+// ===========================
+// Mat3x3 operator tests
+// ===========================
+
+TEST(Mat3x3_Operators, PlusEquals_ElementWiseAndReturnsThis) {
+    std::array<int, 9> a{1,2,3,4,5,6,7,8,9};
+    std::array<int, 9> b{9,8,7,6,5,4,3,2,1};
+
+    geom::Mat3x3<int> A(a);
+    geom::Mat3x3<int> B(b);
+
+    auto* before = &A;
+    auto& ret = (A += B);
+    EXPECT_EQ(&ret, before) << "operator+= should return *this by reference";
+
+    for (std::size_t i = 0; i < 9; ++i) {
+        EXPECT_EQ(A[i], a[i] + b[i]) << "i=" << i;
+    }
+
+    // Ensure RHS unchanged
+    for (std::size_t i = 0; i < 9; ++i) {
+        EXPECT_EQ(B[i], b[i]) << "i=" << i;
+    }
+}
+
+TEST(Mat3x3_Operators, MinusEquals_ElementWiseAndReturnsThis) {
+    std::array<int, 9> a{10,11,12,13,14,15,16,17,18};
+    std::array<int, 9> b{1,2,3,4,5,6,7,8,9};
+
+    geom::Mat3x3<int> A(a);
+    geom::Mat3x3<int> B(b);
+
+    auto& ret = (A -= B);
+    EXPECT_EQ(&ret, &A);
+
+    for (std::size_t i = 0; i < 9; ++i) {
+        EXPECT_EQ(A[i], a[i] - b[i]) << "i=" << i;
+    }
+}
+
+TEST(Mat3x3_Operators, TimesEquals_ScalarElementWise) {
+    std::array<int, 9> a{1,2,3,4,5,6,7,8,9};
+    geom::Mat3x3<int> A(a);
+
+    auto& ret = (A *= 3);
+    EXPECT_EQ(&ret, &A);
+
+    for (std::size_t i = 0; i < 9; ++i) {
+        EXPECT_EQ(A[i], a[i] * 3) << "i=" << i;
+    }
+}
+
+TEST(Mat3x3_Operators, DivideEquals_ScalarElementWise) {
+    std::array<int, 9> a{9,8,7,6,5,4,3,2,1};
+    geom::Mat3x3<int> A(a);
+
+    auto& ret = (A /= 2);
+    EXPECT_EQ(&ret, &A);
+
+    for (std::size_t i = 0; i < 9; ++i) {
+        EXPECT_EQ(A[i], a[i] / 2) << "i=" << i; // integer division
+    }
+}
+
+TEST(Mat3x3_Operators, AssignmentCopiesValues) {
+    std::array<int, 9> a{1,2,3,4,5,6,7,8,9};
+    std::array<int, 9> b{9,9,9,9,9,9,9,9,9};
+
+    geom::Mat3x3<int> A(a);
+    geom::Mat3x3<int> B(b);
+
+    auto& ret = (A = B);
+    EXPECT_EQ(&ret, &A);
+
+    for (std::size_t i = 0; i < 9; ++i) {
+        EXPECT_EQ(A[i], b[i]) << "i=" << i;
+    }
+
+    // Ensure assigning did not mutate B
+    for (std::size_t i = 0; i < 9; ++i) {
+        EXPECT_EQ(B[i], b[i]) << "i=" << i;
+    }
+}
+
+TEST(Mat3x3_Operators, ChainingCompoundOperatorsWorks) {
+    std::array<int, 9> a{1,1,1,1,1,1,1,1,1};
+    std::array<int, 9> b{2,2,2,2,2,2,2,2,2};
+
+    geom::Mat3x3<int> A(a);
+    geom::Mat3x3<int> B(b);
+
+    // chaining requires operator+= returns Mat3x3&
+    (A += B) += B; // A = 1 + 2 + 2 = 5
+
+    for (std::size_t i = 0; i < 9; ++i) {
+        EXPECT_EQ(A[i], 5) << "i=" << i;
+    }
+}
+
+// ===========================
+// Mat3x3 const-correctness tests
+// ===========================
+
+TEST(Mat3x3_ConstCorrectness, IndexingReturnsConstRefForConstObject) {
+    std::array<int, 9> a{1,2,3,4,5,6,7,8,9};
+    const geom::Mat3x3<int> M(a);
+
+    // Flat
+    static_assert(std::is_same_v<decltype(M[0]), const int&>);
+    EXPECT_EQ(M[0], 1);
+
+    // 2D: wrap in parentheses so gtest macro doesn't split on comma
+    static_assert(std::is_same_v<decltype((M[0, 0])), const int&>);
+    EXPECT_EQ((M[0, 0]), 1);
+    EXPECT_EQ((M[2, 2]), 9);
+}
+
+TEST(Mat3x3_ConstCorrectness, IndexingReturnsMutableRefForNonConstObject) {
+    geom::Mat3x3<int> M;
+
+    static_assert(std::is_same_v<decltype(M[0]), int&>);
+    static_assert(std::is_same_v<decltype((M[0, 0])), int&>);
+
+    M[0] = 7;
+    EXPECT_EQ(M[0], 7);
+
+    (M[1, 2]) = 42;
+    EXPECT_EQ((M[1, 2]), 42);
+}
+
+TEST(Mat3x3_ConstCorrectness, ConstCanCallNonMutatingOpsButNotCompoundOps) {
+    static_assert(test_detail::can_call_plus_on_const_mat<int>);
+    static_assert(test_detail::cannot_call_pluseq_on_const_mat<int>);
+
+    // Also check scalar ops callable on const
+    static_assert(requires(const geom::Mat3x3<int> m) { m * 2; });
+    static_assert(requires(const geom::Mat3x3<int> m) { m / 2; });
+
+}
+
+// ===========================
+// Vec3 const-correctness tests
+// ===========================
+
+TEST(Vec3_ConstCorrectness, ConstCanCallValueOpsButNotCompoundOps) {
+    static_assert(test_detail::can_call_plus_on_const_vec3<double>);
+    static_assert(test_detail::cannot_call_pluseq_on_const_vec3<double>);
+
+    // Non-mutating ops should be callable on const
+    static_assert(requires(const geom::Vec3<double> a, const geom::Vec3<double> b) { a - b; });
+    static_assert(requires(const geom::Vec3<double> a) { a * 2.0; });
+    static_assert(requires(const geom::Vec3<double> a) { a / 2.0; });
+}
+
+TEST(Vec3_ConstCorrectness, CompoundOpsReturnReferenceToThisAndAllowChaining) {
+    geom::Vec3<int> a(1, 2, 3);
+    geom::Vec3<int> b(10, 20, 30);
+
+    auto* before = &a;
+    auto& ret = (a += b);
+    EXPECT_EQ(&ret, before);
+
+    // Chaining works only if it returns Vec3&
+    (a += b) += b; // a = (1+10) + 10 +10 ... applied twice more
+    // Let's compute carefully: after first a+=b => (11,22,33)
+    // then (a+=b) => (21,42,63)
+    // then +=b => (31,62,93)
+    EXPECT_EQ(a.x, 31);
+    EXPECT_EQ(a.y, 62);
+    EXPECT_EQ(a.z, 93);
+}
+
+TEST(Vec3_ConstCorrectness, AssignmentOperatorIsUsableAndCopiesValues) {
+    geom::Vec3<double> a(1.0, 2.0, 3.0);
+    geom::Vec3<double> b;
+
+    b = a;
+    EXPECT_DOUBLE_EQ(b.x, 1.0);
+    EXPECT_DOUBLE_EQ(b.y, 2.0);
+    EXPECT_DOUBLE_EQ(b.z, 3.0);
+}
+
+// ===========================
+// Cross-check: Mat3x3 compound ops match non-compound versions
+// ===========================
+
+TEST(Mat3x3_Operators, CompoundMatchesNonCompound) {
+    std::array<int, 9> a{1,2,3,4,5,6,7,8,9};
+    std::array<int, 9> b{9,8,7,6,5,4,3,2,1};
+
+    geom::Mat3x3<int> A(a);
+    geom::Mat3x3<int> B(b);
+
+    auto sum = A + B;
+
+    geom::Mat3x3<int> A2(a);
+    A2 += B;
+
+    for (std::size_t i = 0; i < 9; ++i) {
+        EXPECT_EQ(A2[i], sum[i]) << "i=" << i;
+    }
+
+    auto diff = A - B;
+
+    geom::Mat3x3<int> A3(a);
+    A3 -= B;
+
+    for (std::size_t i = 0; i < 9; ++i) {
+        EXPECT_EQ(A3[i], diff[i]) << "i=" << i;
+    }
+
+    auto mul = A * 3;
+
+    geom::Mat3x3<int> A4(a);
+    A4 *= 3;
+
+    for (std::size_t i = 0; i < 9; ++i) {
+        EXPECT_EQ(A4[i], mul[i]) << "i=" << i;
+    }
+
+    auto div = A / 2;
+
+    geom::Mat3x3<int> A5(a);
+    A5 /= 2;
+
+    for (std::size_t i = 0; i < 9; ++i) {
+        EXPECT_EQ(A5[i], div[i]) << "i=" << i;
+    }
+}
+
+TEST(Vec3, equal_op) {
+    geom::Vec3<double> a(1.0, 2.0, 3.0);
+    geom::Vec3<double> b;
+
+    b = a;
+    EXPECT_EQ(b.x, 1.0);
+    EXPECT_EQ(b.y, 2.0);
+    EXPECT_EQ(b.z, 3.0);
+
+    b.x = 4.0;
+    EXPECT_NE(b.x, a.x);
+}
+
+TEST(Vec3, prods_and_units) {
+    geom::Vec3<double> a(0, 3.0, 4.0);
+    geom::Vec3<double> b(1.0, 1.0, 2.0);
+
+    EXPECT_EQ(a.magnitude(), 5.0);
+    EXPECT_EQ(a.dotProduct(b), 11.0);
+
+    geom::Vec3<double>c = a.crossProduct(b);
+    EXPECT_EQ(c.x, 2.0);
+    EXPECT_EQ(c.y, 4.0);
+    EXPECT_EQ(c.z, -3.0);
+
+    geom::Vec3<double> d(a.unitVector());
+    std::println("x : {}    y : {}    z : {}", d.x, d.y, d.z);
+    EXPECT_EQ(d.magnitude(), 1.0);
+}
+
+TEST(Mat3x3, matrix_mult_vec) {
+    geom::Mat3x3<int> mat ( // Identity matrix
+        std::array<int, 9>{
+            1, 0, 0,
+            0, 1, 0,
+            0, 0, 1
+        }
+    );
+
+    geom::Vec3<int> a(1, 2, 3);
+
+    geom::Vec3<int> b = mat*a;
+
+    std::println("x : {}    y : {}    z : {}", b.x, b.y, b.z);
 }
