@@ -78,6 +78,10 @@ namespace  geom {
 
     }; // Vec3
 
+    template<typename T> // Other direction for the multiplication by scalar
+    constexpr Vec3<T> operator* (const T scalar, const Vec3<T>& other) {
+        return other * scalar;
+    }
 
     template<typename T>
     class Mat3x3 {
@@ -184,7 +188,71 @@ namespace  geom {
             return result;
         }
 
+        constexpr  Mat3x3 operator* (const Mat3x3& other) const {
+            Mat3x3 result;
+            for (std::size_t i = 0; i < 3; i++) {
+                for (std::size_t j = 0; j < 3; j++) {
+                    result[i, j] = matrix[i, 0] * other[0, j] + matrix[i, 1] * other[1, j] + matrix[i, 2] * other[2, j];
+                }
+            }
+
+            return result;
+        }
+
     }; // Mat3x3
+
+    template<typename T> // Other direction for multiplication by scalar
+    constexpr Mat3x3<T> operator* (const T scalar, const Mat3x3<T>& other) {
+        return other * scalar;
+    }
+
+    template<typename T>
+    class Shape {
+        public:
+        std::vector<Vec3<T>> vertices;
+
+        void translate(const Vec3<T>& dir) {
+            for (auto &v : vertices) {
+                v += dir;
+            }
+        }
+
+        void scale(const T scalar) {
+            for (auto &v : vertices) {
+                v *= scalar;
+            }
+        }
+
+        void matrix_transform(const Mat3x3<T>& transform_matrix) {
+            for (auto &v : vertices) {
+                v = transform_matrix * v;
+            }
+        }
+
+    }; // Shape
+
+    template<typename T>
+    Mat3x3<T> rotation_matrix_axis(const Vec3<T>& axis, const double angle) {
+        // Matrix that provides rotation around an axis given by vector
+        // Calculated using Rodrigues formula: https://es.wikipedia.org/wiki/Matriz_de_rotaci%C3%B3n#Rotaci%C3%B3n_en_torno_a_un_eje_arbitrario
+        Mat3x3<T> result;
+        Vec3<T> u = axis.unitVector();
+
+        result[0, 0] = cos(angle) + u.x * u.x * (1 - cos(angle));
+        result[0, 1] = u.x * u.y * (1 - cos(angle)) - u.z * sin(angle);
+        result[0, 2] = u.x * u.z * (1 - cos(angle)) + u.y * sin(angle);
+
+        result[1, 0] = u.y * u.x * (1 - cos(angle)) + u.z * sin(angle);
+        result[1, 1] = cos(angle) + u.y * u.y * (1 - cos(angle));
+        result[1, 2] = u.y * u.z * (1 - cos(angle)) - u.x * sin(angle);
+
+        result[2, 0] = u.z * u.x * (1 - cos(angle)) - u.y * sin(angle);
+        result[2, 1] = u.z * u.y * (1 - cos(angle)) + u.x * sin(angle);
+        result[2, 2] = cos(angle) + u.z * u.z * (1 - cos(angle));
+
+        return result;
+    }
+
 }; // namespace
 
 #endif //GEOM_VISUALIZER_GEOM_HPP

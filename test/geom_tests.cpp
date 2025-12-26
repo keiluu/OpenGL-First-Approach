@@ -744,4 +744,26 @@ TEST(Mat3x3, matrix_mult_vec) {
     geom::Vec3<int> b = mat*a;
 
     std::println("x : {}    y : {}    z : {}", b.x, b.y, b.z);
+
+}
+
+TEST(Mat3x3, matrix_mult_matrix) {
+    geom::Mat3x3<int> mat ( // Identity matrix
+        std::array<int, 9>{
+            1, 0, 0,
+            0, 1, 0,
+            0, 0, 1
+        }
+    );
+
+    const geom::Mat3x3<int> b = 2*mat;
+
+    const geom::Mat3x3<int> c = b*b;
+
+    for (std::size_t i = 0; i < 3; ++i) {
+        for (std::size_t j = 0; j < 3; ++j) {
+            std::print("{} ", c[i, j]);
+        }
+        std::println();
+    }
 }
