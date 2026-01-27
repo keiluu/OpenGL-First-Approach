@@ -229,6 +229,10 @@ namespace  geom {
             }
         }
 
+        void add_vertex(const Vec3<T> new_vertex) {
+            vertices.push_back(new_vertex);
+        }
+
     }; // Shape
 
     template<typename T>

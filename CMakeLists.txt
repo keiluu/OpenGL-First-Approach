@@ -17,22 +17,34 @@ target_include_directories(geom_core PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/external/mdspan/include
 )
 
+add_library(visualizer_core STATIC
+        src/visualizer.cpp
+        src/glad.c
+)
+
+target_include_directories(visualizer_core PUBLIC
+        ${PROJECT_INCLUDE_DIR}
+)
+
+find_package(glfw3 REQUIRED)
+target_link_libraries(visualizer_core PRIVATE
+        glfw
+        dl
+        GL
+)
+
 # ---------- App ----------
 add_executable(geom_visualizer
         src/main.cpp
-        src/glad.c
 )
 
 target_include_directories(geom_visualizer PRIVATE
         ${PROJECT_INCLUDE_DIR}
 )
 
-find_package(glfw3 REQUIRED)
 target_link_libraries(geom_visualizer PRIVATE
         geom_core
-        glfw
-        dl
-        GL
+        visualizer_core
 )
 
 # ---------- Tests ----------
@@ -56,3 +68,8 @@ target_link_libraries(geom_test PRIVATE
 
 include(GoogleTest)
 gtest_discover_tests(geom_test)
+
+
+add_executable(sfml_test src/sfml_test.cpp)
+find_package(SFML 2.5 COMPONENTS graphics window system REQUIRED)
+target_link_libraries(sfml_test PRIVATE sfml-graphics sfml-window sfml-system)

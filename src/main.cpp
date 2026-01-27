@@ -4,6 +4,7 @@
 #include <iostream>
 // #include <string>
 #include <vector>
+#include <SFML/Graphics.hpp>
 
 static void framebuffer_size_callback(GLFWwindow*, int w, int h)
 {
@@ -49,6 +50,8 @@ static GLuint createProgram(const char* vsSrc, const char* fsSrc)
 
     glDeleteShader(vs);
     glDeleteShader(fs);
+
+    // Check compile
 
     // Check link status
     GLint ok = 0;
