@@ -1,70 +1,105 @@
 #include "visualizer.hpp"
-#include <print>
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+#include <stdexcept>
 #include <vector>
 
+static auto vertexShaderSource = R"(
+    #version 460 core
+    layout (location = 0) in vec3 aPos;
+    void main() {
+        gl_Position = vec4(aPos, 1.0);
+        gl_PointSize = 2.0;
+    }
+)";
+
+static auto fragmentShaderSource = R"(
+    #version 460 core
+    out vec4 FragColor;
+    void main() {
+        FragColor = vec4(1.0, 0.65, 0.0, 1.0);
+    }
+)";
+
 namespace visual {
-    static void framebuffer_size_callback(GLFWwindow*, const int w, const int h)
+
+    Visualizer::Visualizer(const int width, const int height, const char* title)
+        : window(nullptr), VAO(0), VBO(0), shaderProgram(0)
     {
-        glViewport(0, 0, w, h);
-    }
+        if (!glfwInit())
+            throw std::runtime_error("GLFW init failed");
 
-    static GLuint compileShader(const GLenum type, const char* src)
-    {
-        const GLuint shader = glCreateShader(type);
-        glShaderSource(shader, 1, &src, nullptr);
-        glCompileShader(shader);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-        // Check compile status
-        GLint ok = 0;
-        glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
-        if (!ok)
-        {
-            GLint logLen = 0;
-            glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLen);
-            std::vector<char> log(logLen);
-            glGetShaderInfoLog(shader, logLen, nullptr, log.data());
-
-            std::println(stderr, "Shader compile failed:\n {}", log.data());
-            glDeleteShader(shader);
-            return 0;
+        window = glfwCreateWindow(width, height, title, nullptr, nullptr);
+        if (!window) {
+            glfwTerminate();
+            throw std::runtime_error("Window creation failed");
         }
 
-        return shader;
-    }
+        glfwMakeContextCurrent(window);
 
-    static GLuint createProgram(const char* vsSrc, const char* fsSrc)
-    {
-        const GLuint vs = compileShader(GL_VERTEX_SHADER, vsSrc);
-        if (!vs) return 0;
-
-        const GLuint fs = compileShader(GL_FRAGMENT_SHADER, fsSrc);
-        if (!fs) { glDeleteShader(vs); return 0; }
-
-        const GLuint program = glCreateProgram();
-        glAttachShader(program, vs);
-        glAttachShader(program, fs);
-        glLinkProgram(program);
-
-        glDeleteShader(vs);
-        glDeleteShader(fs);
-
-        // Check link status
-        GLint ok = 0;
-        glGetProgramiv(program, GL_LINK_STATUS, &ok);
-        if (!ok)
-        {
-            GLint logLen = 0;
-            glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logLen);
-            std::vector<char> log(logLen);
-            glGetProgramInfoLog(program, logLen, nullptr, log.data());
-
-            std::println(stderr, "Program link failed:\n {}", log.data());
-            glDeleteProgram(program);
-            return 0;
+        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+            glfwTerminate();
+            throw std::runtime_error("GLAD init failed");
         }
-
-        return program;
     }
 
+    Visualizer::~Visualizer() {
+        glDeleteVertexArrays(1, &VAO);
+        glDeleteBuffers(1, &VBO);
+        glDeleteProgram(shaderProgram);
+        glfwTerminate();
+    }
 
-}; // namespace
+    void Visualizer::init(const std::vector<float>& vertices) {
+        glEnable(GL_PROGRAM_POINT_SIZE);
+
+        // Compile vertex shader
+        const unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
+        glCompileShader(vertexShader);
+
+        // Compile fragment shader
+        const unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
+        glCompileShader(fragmentShader);
+
+        // Link shader program
+        shaderProgram = glCreateProgram();
+        glAttachShader(shaderProgram, vertexShader);
+        glAttachShader(shaderProgram, fragmentShader);
+        glLinkProgram(shaderProgram);
+
+        // Shaders are linked, no longer needed
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+
+        // Upload vertex data
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, vertices.size() * 3 * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
+        glEnableVertexAttribArray(0);
+
+        // Render loop
+        while (!glfwWindowShouldClose(window)) {
+            glClearColor(0.01f, 0.0f, 0.0f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            glUseProgram(shaderProgram);
+            glBindVertexArray(VAO);
+            glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(vertices.size()));
+
+            glfwSwapBuffers(window);
+            glfwPollEvents();
+        }
+    }
+
+} // namespace visual

@@ -71,5 +71,5 @@ gtest_discover_tests(geom_test)
 
 
 add_executable(sfml_test src/sfml_test.cpp)
-find_package(SFML 2.5 COMPONENTS graphics window system REQUIRED)
+find_package(SFML COMPONENTS graphics window system REQUIRED)
 target_link_libraries(sfml_test PRIVATE sfml-graphics sfml-window sfml-system)

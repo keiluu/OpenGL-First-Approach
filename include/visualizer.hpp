@@ -3,14 +3,20 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <vector>
 
 namespace visual {
-    static void framebuffer_size_callback(GLFWwindow*, int w, int h);
+    class Visualizer {
+    public:
+        Visualizer(int width, int height, const char* title);
+        ~Visualizer();
 
-    static GLuint compileShader(GLenum type, const char* src);
+        void init(const std::vector<float>& vertices);
 
-    static GLuint createProgram(const char* vsSrc, const char* fsSrc);
-
+    private:
+        GLFWwindow* window;
+        unsigned int VAO, VBO, shaderProgram;
+    };
 }; // namespace
 
 #endif //GEOM_VISUALIZER_VISUALIZER_HPP
