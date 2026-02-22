@@ -7,7 +7,7 @@
 int main() {
 
     const std::vector<float> vertices = {
-        0.1f, 0.1f, 0.0f,  // Representation of (1, 1, 0)
+        1.0f, 2.0f, 2.0f,  // Representation of (1, 1, 0)
         0.8f, 0.4f, 0.4f   // Representation of (20, 10, 10) scaled down
     };
 

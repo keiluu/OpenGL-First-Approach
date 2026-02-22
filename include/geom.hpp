@@ -2,6 +2,7 @@
 #define GEOM_VISUALIZER_GEOM_HPP
 
 #include <experimental/mdspan>
+#include <vector>
 
 namespace  geom {
     template<typename T>

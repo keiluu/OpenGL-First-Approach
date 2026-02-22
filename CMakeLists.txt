@@ -12,10 +12,23 @@ add_library(geom_core STATIC
         src/geom.cpp
 )
 
-target_include_directories(geom_core PUBLIC
+target_include_directories(geom_core PRIVATE
         ${PROJECT_INCLUDE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/external/mdspan/include
 )
+
+
+add_library(simul STATIC
+        src/sim.cpp
+)
+
+target_include_directories(simul PRIVATE
+        ${PROJECT_INCLUDE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/external/mdspan/include
+)
+
+target_link_libraries(simul PRIVATE geom_core)
+
 
 add_library(visualizer_core STATIC
         src/visualizer.cpp
@@ -24,14 +37,21 @@ add_library(visualizer_core STATIC
 
 target_include_directories(visualizer_core PUBLIC
         ${PROJECT_INCLUDE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/external/mdspan/include
 )
 
+
 find_package(glfw3 REQUIRED)
+find_package(glm REQUIRED)
 target_link_libraries(visualizer_core PRIVATE
         glfw
         dl
         GL
+        glm::glm
+        simul
 )
+
+
 
 # ---------- App ----------
 add_executable(geom_visualizer
@@ -40,10 +60,11 @@ add_executable(geom_visualizer
 
 target_include_directories(geom_visualizer PRIVATE
         ${PROJECT_INCLUDE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/external/mdspan/include
 )
 
 target_link_libraries(geom_visualizer PRIVATE
-        geom_core
+        simul
         visualizer_core
 )
 
