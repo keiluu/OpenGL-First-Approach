@@ -146,8 +146,8 @@ namespace visual {
         );
 
         glm::mat4 model = glm::mat4(1.0f);
-        model = glm::rotate(model, glm::radians(modelYaw),   glm::vec3(0, 1, 0));
         model = glm::rotate(model, glm::radians(modelPitch), glm::vec3(1, 0, 0));
+        model = glm::rotate(model, glm::radians(modelYaw),   glm::vec3(0, 1, 0));
 
         const glm::mat4 projection = glm::perspective(
             glm::radians(fov),

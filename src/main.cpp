@@ -5,11 +5,16 @@
 
 
 int main() {
-
-    const std::vector<float> vertices = {
-        1.0f, 2.0f, 2.0f,  // Representation of (1, 1, 0)
-        0.8f, 0.4f, 0.4f   // Representation of (20, 10, 10) scaled down
-    };
+    std::vector<float> vertices;
+    for (int i = 0; i < 10; i++) {
+        for (int j = 0; j < 10; j++) {
+            for (int k = 0; k < 10; k++) {
+                vertices.push_back(k*0.1f - 0.5f);
+                vertices.push_back(j*0.1f - 0.5f);
+                vertices.push_back(i*0.1f - 0.5f);
+            }
+        }
+    }
 
     visual::Visualizer my_vis(800, 600, "Hello bro");
     my_vis.init(vertices);
