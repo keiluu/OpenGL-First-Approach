@@ -20,7 +20,7 @@ namespace visual {
         Visualizer(int width, int height, const char* title);
         ~Visualizer();
 
-        void init(const std::vector<float>& vertices);
+        void init(const std::unique_ptr<float []> &vertices, simulation::Simulator& sim);
 
     private:
         GLFWwindow* window;
@@ -40,8 +40,6 @@ namespace visual {
         bool  isDragging = false;
         float lastMouseX = 0.0f;
         float lastMouseY = 0.0f;
-
-        simulation::Simulator* sim;
 
         // Callbacks — static to be compatible with GLFW's C function pointers
         static void scrollCallback     (GLFWwindow* window, double xOffset, double yOffset);

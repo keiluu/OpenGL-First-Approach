@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <vector>
 #include <print>
+#include <memory>
 
 
 static auto vertexShaderSource = R"(
@@ -159,7 +160,7 @@ namespace visual {
 
     }
 
-    void Visualizer::init(const std::vector<float>& vertices) {
+    void Visualizer::init(const std::unique_ptr<float []> &vertices, simulation::Simulator& sim) {
         glEnable(GL_PROGRAM_POINT_SIZE);
         glEnable(GL_DEPTH_TEST);
 
@@ -213,8 +214,8 @@ namespace visual {
         while (!glfwWindowShouldClose(window)) {
 
             glBindBuffer(GL_ARRAY_BUFFER, VBO);
-            glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), nullptr, GL_STREAM_DRAW);
-            glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STREAM_DRAW);
+            glBufferData(GL_ARRAY_BUFFER, sim.size() * sizeof(float), nullptr, GL_STREAM_DRAW);
+            glBufferData(GL_ARRAY_BUFFER, sim.size() * sizeof(float), vertices.get(), GL_STREAM_DRAW);
 
             glm::mat4 MVP = calculateMVP();
 
@@ -224,10 +225,13 @@ namespace visual {
             glUseProgram(shaderProgram);
             glUniformMatrix4fv(MVPLocation, 1, GL_FALSE, glm::value_ptr(MVP));
             glBindVertexArray(VAO);
-            glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(vertices.size())/3);
+            glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(sim.size())/3);
 
             glfwSwapBuffers(window);
             glfwPollEvents();
+
+            sim.update();
+            sim.export_buffer(vertices.get());
         }
     }
 

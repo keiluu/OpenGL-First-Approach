@@ -2,22 +2,27 @@
 #include <GLFW/glfw3.h>
 #include "visualizer.hpp"
 #include <vector>
+#include "geom.hpp"
+#include "sim.hpp"
 
 
 int main() {
-    std::vector<float> vertices;
+
+    std::vector<geom::Vec3<float>> particles;
     for (int i = 0; i < 10; i++) {
         for (int j = 0; j < 10; j++) {
             for (int k = 0; k < 10; k++) {
-                vertices.push_back(k*0.1f - 0.5f);
-                vertices.push_back(j*0.1f - 0.5f);
-                vertices.push_back(i*0.1f - 0.5f);
+                geom::Vec3<float> particle(k*0.1f - 0.5f, j*0.1f - 0.5f, i*0.1f - 0.5f);
+                particles.push_back(particle);
             }
         }
     }
 
+    simulation::SmoothBrownianMotion brown(particles);
+    auto ptr = std::make_unique<float []>(brown.size());
+
     visual::Visualizer my_vis(800, 600, "Hello bro");
-    my_vis.init(vertices);
+    my_vis.init(ptr, brown);
 
     return 0;
 }
