@@ -1,9 +1,11 @@
 #include "sim.hpp"
 #include <sim.hpp>
 #include <random>
+#include <glm/vec3.hpp>
 
-#define MOVEMENT_SCALE 0.01
-#define MAX_VELOCITY 1
+#define MOVEMENT_SCALE 0.015
+#define MAX_VELOCITY 0.5
+#define POS_LIMIT 30
 
 namespace simulation {
 
@@ -61,19 +63,25 @@ namespace simulation {
             }
 
             p.position += p.velocity;
+
+            if (p.position.magnitude() > POS_LIMIT) {
+                p.position = geom::Vec3{0.0f, 0.0f, 0.0f};
+                p.velocity = geom::Vec3{0.0f, 0.0f, 0.0f};
+            }
         }
     }
 
     void SmoothBrownianMotion::export_buffer(float *vertices) {
         for (int i = 0; i < particles.size(); i++) {
-            vertices[3*i] = particles[i].position.x;
-            vertices[3*i + 1] = particles[i].position.y;
-            vertices[3*i + 2] = particles[i].position.z;
+            vertices[4*i] = particles[i].position.x;
+            vertices[4*i + 1] = particles[i].position.y;
+            vertices[4*i + 2] = particles[i].position.z;
+            vertices[4*i + 3] = particles[i].velocity.magnitude() / MAX_VELOCITY;
         }
     }
 
     size_t SmoothBrownianMotion::size() { // Returns amout of floats NOT PARTICLES defining the data
-        return 3*particles.size();
+        return 4*particles.size();
     }
 
 

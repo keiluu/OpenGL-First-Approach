@@ -13,19 +13,26 @@
 static auto vertexShaderSource = R"(
     #version 460 core
     layout (location = 0) in vec3 aPos;
+    layout (location = 1) in float aSpeed;
     uniform mat4 MVP;
+
+    out float speed;
 
     void main() {
         gl_Position = MVP * vec4(aPos, 1.0);
-        gl_PointSize = 3.0;
+        gl_PointSize = 2.0;
+        speed = aSpeed;
     }
 )";
 
 static auto fragmentShaderSource = R"(
     #version 460 core
+    in float speed;
     out vec4 FragColor;
     void main() {
-        FragColor = vec4(1.0, 0.65, 0.0, 1.0);
+        vec3 slow = vec3(1.0, 0.0, 0.1);  // blue
+        vec3 fast = vec3(1.0, 1.0, 0.0);  // red
+        FragColor = vec4(mix(slow, fast, speed), 1.0);
     }
 )";
 
@@ -113,6 +120,9 @@ namespace visual {
         auto* viz = static_cast<Visualizer*>(glfwGetWindowUserPointer(window));
         if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
             glfwSetWindowShouldClose(window, true);
+
+        if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+            viz->paused = !viz->paused;
     }
 
     void Visualizer::framebufferSizeCallback(GLFWwindow* window, const int width, const int height) {
@@ -125,7 +135,7 @@ namespace visual {
         if (static_cast<float>(width) / static_cast<float>(height) > targetAspect) {
             // Window is too wide — letterbox on sides
             viewHeight = height;
-            viewWidth  = height * static_cast<int>(targetAspect);
+            viewWidth  = static_cast<int>(height * targetAspect);
             offsetX    = (width - viewWidth) / 2;
             offsetY    = 0;
         } else {
@@ -205,8 +215,11 @@ namespace visual {
 
         glBindVertexArray(VAO);
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 4 * sizeof(float), nullptr);
         glEnableVertexAttribArray(0);
+
+        glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(1);
 
         const int MVPLocation = glGetUniformLocation(shaderProgram, "MVP");
 
@@ -225,12 +238,14 @@ namespace visual {
             glUseProgram(shaderProgram);
             glUniformMatrix4fv(MVPLocation, 1, GL_FALSE, glm::value_ptr(MVP));
             glBindVertexArray(VAO);
-            glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(sim.size())/3);
+            glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(sim.size())/4);
 
             glfwSwapBuffers(window);
             glfwPollEvents();
 
-            sim.update();
+            if (!paused)
+                sim.update();
+
             sim.export_buffer(vertices.get());
         }
     }

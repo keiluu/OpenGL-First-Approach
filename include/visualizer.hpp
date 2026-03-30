@@ -41,6 +41,9 @@ namespace visual {
         float lastMouseX = 0.0f;
         float lastMouseY = 0.0f;
 
+        // Pause or Continue simulation
+        bool paused = false;
+
         // Callbacks — static to be compatible with GLFW's C function pointers
         static void scrollCallback     (GLFWwindow* window, double xOffset, double yOffset);
         static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
